@@ -163,8 +163,9 @@ def make_quote_tensors(quote):
                                              truncation=True,
                                              return_tensors='pt')
         input_ids.append(encoded_dict['input_ids'])
-    input_ids = torch.cat(input_ids, 0)  # [sample_num, 80]
-    return input_ids, label
+    input_ids = torch.cat(input_ids, 0)  # [num, 80]
+    quote_ids = [all_quotes.index(q) for q in quotes]
+    return input_ids, label, torch.LongTensor(quote_ids)
 
 
 # Define network
@@ -194,21 +195,23 @@ class Context_Encoder(nn.Module):
 class Quote_Encoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.bert_model = BertSememeModel.from_pretrained(
-            PRETRAINED_MODEL_NAME)
+        self.bert_model = BertSememeModel.from_pretrained(PRETRAINED_MODEL_NAME)
+        # self.dropout = nn.Dropout(0.5)
 
     def forward(self, quotes):
         quote_tensor = []
         labels = []
         for quote in quotes:
-            quote_input_ids, label = make_quote_tensors(quote)
+            quote_input_ids, label, quote_ids = make_quote_tensors(quote)
             quote_input_ids = quote_input_ids.to(device)
-            outputs = self.bert_model(input_ids=quote_input_ids)
-            last_hidden_state = outputs[0]  # [num_quotes, sequence_length, hidden_size]
-            output = torch.mean(last_hidden_state, dim=1)  # [num_quotes, hidden_size]
+            quote_ids = quote_ids.to(device)
+            outputs = self.bert_model(input_ids=quote_input_ids, quote_ids=quote_ids)
+            last_hidden_state = outputs[0]  # (num, sequence_length, hidden_size))
+            # last_hidden_state = self.dropout(last_hidden_state)
+            output = torch.mean(last_hidden_state, dim=1)  # (num, hidden_size))
             quote_tensor.append(output)
             labels.append(label)
-        quote_tensor = torch.stack(quote_tensor, dim=0)  # [batch, num_quotes, hidden_size]
+        quote_tensor = torch.stack(quote_tensor, dim=0)  # (batch, num, hidden_size))
         return quote_tensor, labels
 
 
@@ -252,7 +255,7 @@ def training(model, epoch, train, valid, device):
     best_acc = 0
     count = 0
     for epoch in range(epoch):
-        start = time.clock()
+        start = time.perf_counter()
         total_loss, total_acc = 0, 0
         print("epoch: ", epoch + 1)
         # train
@@ -306,7 +309,7 @@ def training(model, epoch, train, valid, device):
             else:
                 count += 1
         model.train()
-        end = time.clock()
+        end = time.perf_counter()
         print('epoch running time:{:.0f}s'.format(end - start))
         # early stopping
         if count == 3:
@@ -469,7 +472,7 @@ def training_mask(model, epoch, train, valid, quote_tensor, device):
     count = 0
     quote_tensor = quote_tensor.to(device)
     for epoch in range(epoch):
-        start = time.clock()
+        start = time.perf_counter()
         print("epoch: ", epoch + 1)
         total_loss, total_MRR, total_NDCG = 0, 0, 0
         # train
@@ -491,7 +494,7 @@ def training_mask(model, epoch, train, valid, quote_tensor, device):
             total_loss += loss.item()
             total_MRR += MRR
             total_NDCG += NDCG
-        end = time.clock()
+        end = time.perf_counter()
         print('Epoch running time :{:.0f}'.format(end - start))
         print('Train | Loss:{:.3f} MRR: {:.3f} NDCG: {:.3f}'.format(total_loss, total_MRR/t_batch, total_NDCG/t_batch))
 
