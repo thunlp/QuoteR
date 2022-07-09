@@ -578,7 +578,7 @@ valid_loader_mask = DataLoader(dataset=valid_dataset_mask,
                                num_workers=2)
 print("start traing......")
 training_mask(model=model,
-              epoch=3,
+              epoch=40,
               train=train_loader_mask,
               valid=valid_loader_mask,
               quote_tensor=quote_embeddings,
