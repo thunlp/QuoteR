@@ -252,7 +252,7 @@ def training(model, epoch, train, valid, device):
     best_acc = 0
     count = 0
     for epoch in range(epoch):
-        start = time.clock()
+        start = time.perf_counter()
         total_loss, total_acc = 0, 0
         print("epoch: ", epoch + 1)
         # train
@@ -310,7 +310,7 @@ def training(model, epoch, train, valid, device):
             else:
                 count += 1
         model.train()
-        end = time.clock()
+        end = time.perf_counter()
         print('epoch running time:{:.0f}s'.format(end - start))
         # early stopping
         if count == 3:
@@ -473,7 +473,7 @@ def training_mask(model, epoch, train, valid, quote_tensor, device):
     count = 0
     quote_tensor = quote_tensor.to(device)
     for epoch in range(epoch):
-        start = time.clock()
+        start = time.perf_counter()
         print("epoch: ", epoch + 1)
         total_loss, total_MRR, total_NDCG = 0, 0, 0
         # train
@@ -495,7 +495,7 @@ def training_mask(model, epoch, train, valid, quote_tensor, device):
             total_loss += loss.item()
             total_MRR += MRR
             total_NDCG += NDCG
-        end = time.clock()
+        end = time.perf_counter()
         print('Epoch running time :{:.0f}'.format(end - start))
         print('Train | Loss:{:.3f} MRR: {:.3f} NDCG: {:.3f}'.format(total_loss, total_MRR/t_batch, total_NDCG/t_batch))
 
