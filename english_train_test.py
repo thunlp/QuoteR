@@ -300,6 +300,10 @@ def training(model, epoch, train, valid, device):
                 total_loss, total_acc / v_batch))
             if total_acc > best_acc:
                 best_acc = total_acc
+                if os.path.exists("./model"):
+                    pass
+                else:
+                    os.mkdir("./model")
                 torch.save(
                     model.quote_model.state_dict(), "./model/english_quote.pth")
                 torch.save(
@@ -533,11 +537,55 @@ def training_mask(model, epoch, train, valid, quote_tensor, device):
             break
         model.train()
 
+# Mask Dataset and DataLoader
+class Dataset_Mask(Dataset):
 
-train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True, num_workers=2)
-valid_loader = DataLoader(dataset=valid_dataset, batch_size=64, shuffle=True, num_workers=2)
+    def __init__(self, input_ids, token_type_ids, attention_masks, mask_ids,
+                 y):
+        self.input_ids = input_ids
+        self.token_type_ids = token_type_ids
+        self.attention_masks = attention_masks
+        self.mask_ids = mask_ids
+        self.label = y
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        if self.label is None:
+            return self.input_ids[idx], self.token_type_ids[
+                idx], self.attention_masks[idx], self.mask_ids[idx]
+        return self.input_ids[idx], self.token_type_ids[
+            idx], self.attention_masks[idx], self.mask_ids[idx], self.label[
+                idx]
+
+
+print("loading train and valid dataloader ...")
+train_dataset_mask = Dataset_Mask(input_ids=train_input_ids,
+                                  token_type_ids=train_token_type_ids,
+                                  attention_masks=train_attention_masks,
+                                  mask_ids=train_mask_ids,
+                                  y=y_train)
+train_loader_mask = DataLoader(dataset=train_dataset_mask,
+                               batch_size=64,
+                               shuffle=True,
+                               num_workers=2)
+valid_dataset_mask = Dataset_Mask(input_ids=valid_input_ids,
+                                  token_type_ids=valid_token_type_ids,
+                                  attention_masks=valid_attention_masks,
+                                  mask_ids=valid_mask_ids,
+                                  y=y_valid)
+valid_loader_mask = DataLoader(dataset=valid_dataset_mask,
+                               batch_size=64,
+                               shuffle=True,
+                               num_workers=2)
 print("start traing......")
-training_mask(model=model, epoch=40, train=train_loader, valid=valid_loader, quote_tensor=quote_embeddings, device=device)
+training_mask(model=model,
+              epoch=40,
+              train=train_loader_mask,
+              valid=valid_loader_mask,
+              quote_tensor=quote_embeddings,
+              device=device)
 
 
 def test(model, test_loader, quote_tensor, device):
@@ -600,18 +648,18 @@ def test(model, test_loader, quote_tensor, device):
 
 print("loading test tensor......")
 test_input_ids, test_token_type_ids, test_attention_masks, test_mask_ids = make_context_tensors(test_former, test_latter)
-test_dataset = Dataset(input_ids=test_input_ids,
-                       token_type_ids=test_token_type_ids,
-                       attention_masks=test_attention_masks,
-                       mask_ids=test_mask_ids,
-                       y=y_test)
-test_loader = DataLoader(dataset=test_dataset,
-                         batch_size=64,
-                         num_workers=2)
+test_dataset_mask = Dataset_Mask(input_ids=test_input_ids,
+                                 token_type_ids=test_token_type_ids,
+                                 attention_masks=test_attention_masks,
+                                 mask_ids=test_mask_ids,
+                                 y=y_test)
+test_loader_mask = DataLoader(dataset=test_dataset_mask,
+                              batch_size=64,
+                              num_workers=2)
 print('loading model ...')
 model = torch.load('./model/model_english.model')
 model.to(device)
 test(model=model,
-     test_loader=test_loader,
+     test_loader=test_loader_mask,
      quote_tensor=quote_embeddings,
      device=device)
