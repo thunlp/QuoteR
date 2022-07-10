@@ -628,7 +628,6 @@ def test(model, test_loader, quote_tensor, device):
             total_recall_500 += recall_500
             total_recall_1000 += recall_1000
         print(len(all_ranks))
-        print(all_ranks)
         print(
             "Test | Loss:{:.5f} MRR: {:.3f} NDCG: {:.3f} Mean Rank: {:.0f} Median Rank: {:.0f} Variance: {:.0f}"
             .format(total_loss, total_MRR / t_batch,
